@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: If you use this tool in research or an audit report, please cite it.
+title: "dmarc-rua-classifier"
+type: software
+authors:
+  - name: FaultyPacket
+version: 1.2.0
+date-released: 2026-10-29
+license: AGPL-3.0-or-later
+repository-code: https://github.com/FaultyPacket/dmarc-rua-classifier
+url: https://faultypacket.co.uk
+keywords: [dmarc, spf, dkim, mta-sts, dnssec, dane, bimi, rfc9989, email-security]

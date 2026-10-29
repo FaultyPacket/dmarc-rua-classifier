@@ -1,17 +1,31 @@
 # FaultyPacket™ dmarc-rua-classifier
 
-**Who reads your DMARC reports, and are they allowed to?** A small Python 3
-tool that answers both from public DNS.
+[![ci](https://github.com/FaultyPacket/dmarc-rua-classifier/actions/workflows/ci.yml/badge.svg)](https://github.com/FaultyPacket/dmarc-rua-classifier/actions/workflows/ci.yml)
+[![licence: AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue)](LICENSE)
 
-DMARC aggregate (`rua`) reports list the IP addresses that sent mail as your
-domain, with volumes and pass/fail results. They go to whoever is named in your
-`_dmarc` TXT record. This tool lists those destinations and puts each into a
-generic tier, so you can see where your reports go.
+**Who reads your DMARC reports, and are they allowed to?** Lists every `rua`/`ruf` destination in your DMARC record, checks the RFC 9990/9991 external-destination authorisation record, and validates the record against RFC 9989, from public DNS.
+
+```
+pip install git+https://github.com/FaultyPacket/dmarc-rua-classifier
+dmarc-rua-classifier --check --doh gov.uk
+dmarc-rua-classifier --check --doh -f domains.txt --json out.json
+```
+
+Sample output (live run, 2026-10-29 11:48 UTC, trimmed):
+
+```
+gov.uk: OK
+  record: v=DMARC1;p=reject;sp=none;np=reject;adkim=s;aspf=s;fo=1;rua=mailto:dmarc-rua@dmarc.service.gov.uk
+  rua -> dmarc.service.gov.uk: same-org
+  [info] fo has no effect without ruf (RFC 9989 4.7)
+```
+
+For the full mail/DNS audit (SPF, DKIM, MTA-STS, DNSSEC, BIMI, provider verdicts) see [faultypacket-audit](https://github.com/FaultyPacket/faultypacket-audit). AI agents: see [AGENTS.md](AGENTS.md).
 
 ## Install
 
 ```bash
-pip install -r requirements.txt   # dnspython, publicsuffixlist (pinned)
+pip install git+https://github.com/FaultyPacket/dmarc-rua-classifier   # or: pip install -r requirements.txt
 ```
 
 ## Usage

@@ -1,0 +1,14 @@
+name: Bug or wrong finding
+description: A crash, or a finding you think is wrong
+labels: [bug]
+body:
+  - type: input
+    attributes: {label: Version, description: "dmarc-rua-classifier --version"}
+    validations: {required: true}
+  - type: input
+    attributes: {label: RFC section in the message, description: "e.g. RFC 9990 4"}
+  - type: textarea
+    attributes: {label: Command and output, description: "Exact command and the relevant output. Use example.com if the domain is private.", render: text}
+    validations: {required: true}
+  - type: textarea
+    attributes: {label: Why it is wrong, description: "Quote the RFC section or provider page that disagrees."}

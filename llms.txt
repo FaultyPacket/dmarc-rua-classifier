@@ -1,0 +1,8 @@
+# dmarc-rua-classifier
+
+> Free, open-source (AGPL-3.0) tool by FaultyPacket™: lists where a domain's DMARC aggregate (rua) and failure (ruf) reports go, checks RFC 9990/9991 external-destination authorisation, and validates the record against RFC 9989. Public DNS only.
+
+- [README](https://github.com/FaultyPacket/dmarc-rua-classifier/blob/main/README.md)
+- [AGENTS.md](https://github.com/FaultyPacket/dmarc-rua-classifier/blob/main/AGENTS.md)
+- [Full audit: faultypacket-audit](https://github.com/FaultyPacket/faultypacket-audit)
+- [FaultyPacket](https://faultypacket.co.uk)
