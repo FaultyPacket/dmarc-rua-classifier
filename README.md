@@ -1,57 +1,81 @@
-# dmarc-rua-classifier
+# FaultyPacket™ dmarc-rua-classifier
 
-**Who reads your DMARC reports?** A small, dependency-free Python 3 script that
-answers that from public DNS.
+**Who reads your DMARC reports, and are they allowed to?** A small Python 3
+tool that answers both from public DNS.
 
 DMARC aggregate (`rua`) reports list the IP addresses that sent mail as your
 domain, with volumes and pass/fail results. They go to whoever is named in your
 `_dmarc` TXT record. This tool lists those destinations and puts each into a
 generic tier, so you can see where your reports go.
 
+## Install
+
+```bash
+pip install -r requirements.txt   # dnspython, publicsuffixlist (pinned)
+```
+
 ## Usage
 
 ```bash
+# classify where rua reports go (1.0 behaviour)
 python3 dmarc_rua_classifier.py domains.txt --out results.csv
 python3 dmarc_rua_classifier.py domains.txt --providers providers.csv --delay 1.5
+
+# check your own domain(s)
+python3 dmarc_rua_classifier.py --check example.com
+python3 dmarc_rua_classifier.py --check -f domains.txt --json out.json --out out.csv
+cat list.txt | python3 dmarc_rua_classifier.py --check -q --doh
 ```
 
-`domains.txt` has one domain per line. Lines starting with `#` are ignored.
+Inputs can be domains, URLs or email addresses, as arguments, from
+`-f/--file` (repeatable, `-` = stdin), or piped in. Lines starting `#` are
+ignored; duplicates are removed. A positional argument that is an existing
+file is read as a list. Exit status is 1 if any domain fails or any input is
+invalid, so it can gate CI.
 
-## Tiers
+DNS goes to your system resolver on port 53 by default. `--resolver IP` picks
+one; `--doh` uses a DNS-over-HTTPS JSON API (`--doh-url` to choose the endpoint).
 
-| Tier | Meaning | How it is decided |
-|---|---|---|
-| T0 | Self-hosted | rua domain equals, or is a subdomain or parent of, the queried domain |
-| T1 | Government | rua domain ends in a government suffix (`.gov.uk`, `.gov`, ...) |
-| T2 | Bundled infrastructure | your `providers.csv` marks it `bundled_infrastructure` |
-| T3 | UK/EU-headquartered provider | your `providers.csv` gives hq_country GB or an EU state |
-| T4 | Other-country-headquartered provider (e.g. US) | your `providers.csv` gives another country |
-| T5 | Unclassified | third party not in your `providers.csv` (TLD hint shown) |
+## Check mode (`--check`)
 
-**No provider list ships with this tool, on purpose.** Where a company has its
-headquarters is a judgement call, and it changes with acquisitions. Write your
-own `providers.csv`, date it, and publish it with your results:
+DMARC is now RFC 9989 (May 2026), which obsoletes RFC 7489 and RFC 9091.
+Aggregate reports are RFC 9990, failure reports RFC 9991. Section numbers
+below were checked against the RFC Editor text, including verified erratum
+9150 (RFC 9989 points to RFC 9990 section 4, not 3, for external
+verification).
 
-```csv
-suffix,type,hq_country
-reports.example-provider.com,dmarc_saas,US
-mail.example-gateway.net,bundled_infrastructure,US
+| Check | Reference |
+|---|---|
+| `v=DMARC1` first, value case-sensitive; near-miss records (`v=dmarc1`) reported | RFC 9989 4.7 |
+| More than one record at a name: all discarded | RFC 9989 4.10 step 2 |
+| `p`, `sp`, `np`, `adkim`, `aspf`, `psd` (y/n/u), `t` (y/n) values; missing `p` treated as `p=none` | RFC 9989 4.7, 4.10.1 |
+| `fo` grammar: `0` and `1` mutually exclusive, `d`/`s` at most once | RFC 9989 4.8 |
+| `pct`, `rf`, `ri` flagged as historic (receivers ignore them); `pct` below 100 is a warning because the full policy now applies | RFC 9989 9.3, A.6 |
+| `!size` on report URIs flagged as obsolete | RFC 9989 4.8 |
+| Policy discovery: own record, else Organizational Domain, else PSD record | RFC 9989 4.10.1 |
+| Organizational Domain by **DNS Tree Walk** (at most 8 queries); legacy PSL answer kept for comparison and differences reported | RFC 9989 4.10, 4.10.2 |
+| Parent public suffix publishing a record without `psd=y` (suggests `psd=n`) | RFC 9989 5.2, 11.8 |
+| **External destination verification** for every `rua` and `ruf` address | RFC 9990 4; RFC 9991 5 |
+
+External destination verification: when a report address's Organizational
+Domain differs from the policy domain's, the destination must publish a TXT
+record starting `v=DMARC1` at
+
+```
+<your-domain>._report._dmarc.<destination-host>
 ```
 
-A vendor-neutral template is included as `providers.example.csv` (placeholder
-hostnames only). To use it:
+If it does not, compliant receivers ignore that URI. Nothing errors anywhere;
+the reports just never arrive. The tool shows the exact name it queried.
+Wildcards (`*._report._dmarc.<host>`) are resolved by DNS and count.
 
-1. `cp providers.example.csv providers-YYYY-MM-DD.csv` and put the date you
-   researched each provider in the filename.
-2. Replace the placeholder rows with real rua hostname suffixes. `type` is
-   `dmarc_saas` or `bundled_infrastructure`; `hq_country` is the ISO code of the
-   company's headquarters (or ultimate parent, if that is your rule) on that date.
-3. Run with `--providers providers-YYYY-MM-DD.csv` and publish that file, the
-   run's UTC timestamp and the resolver alongside your totals so others can
-   reproduce or challenge them.
-
-Self-hosted (T0) means the rua host is the scanned domain itself or one of its
-subdomains. A report address on a different organisation's domain is not T0.
+Why Tree Walk vs PSL matters: RFC 9989 drops the Public Suffix List. A
+receiver walks up `_dmarc` names and picks the record with the fewest labels
+unless a record says `psd=y` or `psd=n`. If a public suffix above you publishes
+a DMARC record without `psd=y`, RFC 9989 receivers treat that suffix as your
+Organizational Domain, which changes relaxed alignment and which report
+addresses count as external. Legacy RFC 7489 receivers still use the PSL, so
+both answers are shown when they differ.
 
 Classify by the company, not by the TLD. A hostname is never evidence of
 headquarters either way: an EU-region hostname of a recognised provider is
@@ -62,18 +86,39 @@ If you can't establish a provider's headquarters, leave it out of
 
 ## What it does and doesn't do
 
-- It makes one `_dmarc` TXT query per domain, over DNS-over-HTTPS to a public
-  resolver (edit `DOH` to change which one). The default delay between domains is 1 s.
+- Classify mode makes one `_dmarc` TXT query per domain, with a 1 s default
+  delay. Check mode adds up to 8 Tree Walk queries per name (cached) and one
+  per external destination.
 - It reads public DNS only. It doesn't connect to mail servers or websites.
-- It doesn't check whether the external rua destination has authorised your
-  domain (the `_report._dmarc` record).
-- Its output is a snapshot with a UTC timestamp. DNS changes all the time.
+- Output is a snapshot with a UTC timestamp. DNS changes all the time.
 
-## Tested
+## Limitations
 
-We ran it on 10 public UK and global domains on 29 Oct 2026 (08:32 UTC). It
-handled several rua destinations per record, records with no rua, and the
-self-hosted and government tiers.
+- No DNSSEC validation; it trusts the resolver.
+- A subdomain with no record is reported with the record that applies
+  (Organizational Domain or PSD); that record's tags are not re-validated.
+  Run `--check` on that domain.
+- Verification checks that a `v=DMARC1` record exists at the
+  `_report._dmarc` name. It does not apply `rua` overrides a destination may
+  publish there (RFC 9990 4 step 9).
+- The legacy comparison depends on the bundled Public Suffix List snapshot
+  (pinned in `requirements.txt`).
+- Receivers still on RFC 7489 behave differently (PSL, `pct`). The tool
+  reports RFC 9989 behaviour and shows the PSL answer where it differs.
+- It cannot see whether reports are actually delivered or read.
+
+## Tests
+
+`pip install -r requirements-dev.txt && python -m pytest -q tests` runs the
+offline suite (fake DNS; no network). CI runs it on Python 3.10, 3.12, 3.13.
+
+Live check, 29 Oct 2026 10:42 UTC, 54 public UK and global domains, DoH,
+RFC 9989 rules: 39 had at least one external report destination (73
+destinations), all authorised. 28 of 54 records still carry historic tags
+(`pct` in 26, `ri` in 6, `rf` in 3); 25 of the 26 are `pct=100`, which changes nothing, and 1 is a partial value whose meaning is now gone. For 12 domains, all under one public
+suffix whose record lacks `psd=y`, the Tree Walk and the PSL disagree on the
+Organizational Domain. (The same set under the PSL rules gave 43 domains and 81
+external destinations, also all authorised; the difference is that Tree Walk.)
 
 ## Data
 
@@ -91,4 +136,12 @@ Hostnames not yet attributed stay unclassified (T5).
 
 Write-up: https://faultypacket.co.uk/research/dmarc-reports
 
-MIT licensed. Made by FaultyPacket. Free 20-check domain scan at faultypacket.co.uk.
+Made by FaultyPacket™: https://faultypacket.co.uk
+
+---
+
+## Licence
+
+AGPL-3.0-or-later. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+Copyright (c) 2026 FaultyPacket. FaultyPacket™ — https://faultypacket.co.uk

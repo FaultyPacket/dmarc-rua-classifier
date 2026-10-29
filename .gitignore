@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+results*.csv
+*.json
+!providers.example.csv
+# campaign drafts, not part of the repo
+x_thread.md
+devto_article.md

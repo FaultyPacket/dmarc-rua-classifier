@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dmarc-rua-classifier"
+version = "1.2.0"
+description = "Who reads your DMARC reports, and are they allowed to? RFC 9989 / RFC 9990 / RFC 9991 checks from public DNS"
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.10"
+dependencies = ["dnspython>=2.6,<3", "publicsuffixlist>=1.0"]
+
+[project.urls]
+Homepage = "https://faultypacket.co.uk"
+
+[project.scripts]
+dmarc-rua-classifier = "dmarc_rua_classifier:main"
+
+[tool.setuptools]
+py-modules = ["dmarc_rua_classifier"]
