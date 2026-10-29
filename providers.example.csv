@@ -1,0 +1,5 @@
+suffix,type,hq_country
+reports.example-dmarc-saas.com,dmarc_saas,US
+eu.example-dmarc-saas.com,dmarc_saas,US
+rua.example-eu-provider.eu,dmarc_saas,DE
+dmarc.example-mail-sender.net,bundled_infrastructure,US

@@ -1,0 +1,12 @@
+scope,tier,tier_meaning,domains,denominator,pct_of_domains_with_rua,pct_of_all_366,observed
+all,T0,self-hosted,171,353,48.4,46.7,2026-10-29
+all,T1,sovereign/government,239,353,67.7,65.3,2026-10-29
+all,T2,bundled infrastructure,26,353,7.4,7.1,2026-10-29
+all,T3,UK/EU-HQ DMARC SaaS,40,353,11.3,10.9,2026-10-29
+all,T4,US-HQ or US/global-parent DMARC SaaS,94,353,26.6,25.7,2026-10-29
+all,T5,unclassified,25,353,7.1,6.8,2026-10-29
+England,T4,US-HQ or US/global-parent DMARC SaaS,75,301,,24.9,2026-10-29
+Scotland,T4,US-HQ or US/global-parent DMARC SaaS,8,32,,25.0,2026-10-29
+Wales,T4,US-HQ or US/global-parent DMARC SaaS,7,22,,31.8,2026-10-29
+Northern Ireland,T4,US-HQ or US/global-parent DMARC SaaS,4,11,,36.4,2026-10-29
+all,no-rua,DMARC with no rua or no DMARC,13,366,,3.6,2026-10-29
